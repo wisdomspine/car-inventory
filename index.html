@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>IndexedDB</title>
+	<style type="text/css">
+		*{
+			box-sizing: border-box;
+		}
+		body{
+			background-color: #dddde9;
+			font-family: sans-serif;
+			font-size: 10pt;
+		}
+		h1{
+			font-size: 14pt;
+		}
+		h2{
+			font-size: 12pt;
+		}
+		header, aside, #content{
+			background-color: #ffffff;
+			box-shadow: 0 5px 5px #bbbbee;
+			border: 1px solid #bbbbee;
+
+		}
+		.preview{
+			height: 150px;
+			background-color:#dddde9; 
+			border: 1px solid #bbbbee;
+			display: block;
+		}
+		.form-group{
+			margin-bottom: 1px;
+			padding: 6px;
+		}
+		.form-group input,.form-group textarea{
+			width: 98%;
+		}
+		form button{
+			float: right;
+			display: block;
+			position: static;
+			margin-bottom: 20px;
+		}
+		form{
+			
+		}
+		.status{
+			position: absolute;
+			box-shadow: 0 5px 5px #999999;
+			display: block;
+			z-index: 4;
+		}
+
+		.add{
+			display: flex;
+			flex-flow: column wrap;
+			padding: 8px;
+		}
+		#content{
+			display: flex;
+			flex-flow: column wrap;
+			padding: 8px;			
+		}
+		#content>#a3{
+			border: 1px inset #cccccc;
+			position: relative;
+			min-height: 100px;
+		}
+		#content>article#a2{
+			border-bottom: 1px solid #999999;
+			padding: 0px;
+			margin-bottom: 10px;
+
+		}
+		#content>article#a2 input{
+			width: 80%;
+			border-width: 0;
+			padding: 5px;
+			margin-bottom: -16px;	
+		}
+		#content>article#a2 button{
+			display: inline-block;
+			margin-bottom: -20px;
+		}
+
+		.status{
+			position: absolute;
+			margin-top: 0px;
+			margin-left: 10px;
+			padding: 5px;
+			border-radius: 5px;
+			z-index: 500;
+			color: #ffffff;
+			display: none;
+		}
+
+		.success{
+			border:1px solid #56cd55; 
+			background-color: #56cd55;
+		}
+
+		.error{
+			background-color: #ff2711;
+			color: #ffffff;
+			border: 1px solid #ff2711;;
+		}
+
+		.overlay{
+			width: all;
+			height: 100%;
+			height: 100%;
+			width: 100%;
+			position: absolute;
+			background-color: #eeeeee;
+			font-size: 13pt;
+			text-align: left;
+		}
+
+		.form-group[required] label:after{
+			content: "*";
+			color: red;
+		}
+		.nav h1{
+			padding: 4px;
+			text-align: center;
+		}
+
+		input, button{
+			border-radius: 0px;
+			border:1px solid #cccccc;
+			padding: 5px;
+			margin-bottom: 2px;
+		}
+
+		input:not([type="button"]):focus, textarea:focus{
+			border: 1px inset #2bf;
+		}
+		.nav{
+			background-color: #2bf;
+			color: #ffffff;
+		}
+		#dropImage{
+			display: block;
+			width: 100%;
+		}
+		.btn-danger{
+			background-color: #ff2711;
+			color:white;
+		}
+		.btn-success{
+			background-color: #2bf;
+			color: #ffffff;
+		}
+
+		.btn-success:hover, .btn-danger:hover{
+			box-shadow: 0 2px 2px #999999;
+			cursor: pointer;
+		}
+
+		.btn-danger:active, .btn-success:active{
+			box-shadow: 0 0 0 #cccccc;
+			cursor: pointer;
+		}
+
+		input[type="file"]{
+			background-color: #2bf;
+			width: 100%;
+		}
+		input[type="file"]:before{
+			content: "hello";
+			display: block;
+		}
+
+		/* tables */
+		#a3{
+			overflow: auto;
+		}
+		table{
+			border-collapse: collapse;
+			width: 100%;
+		}
+		th{
+			text-align: left;
+			border-bottom: 3px solid #2bf;
+			padding: 8px;
+		}
+		td{
+			border-top: 1px solid #bbbbbb;
+			padding: 5px;
+
+		}
+		tr:nth-child(even){
+			background-color: #dddde9;
+		}
+		/* layout of elements */
+		@media only screen and (max-width: 767px) {
+			/* smaller devices */
+			.container{
+				display: flex;
+				flex-flow: column wrap;
+				width: 100%;
+				margin: -5px;
+			}
+			.container>*{
+				flex: 0 0 100%;
+				margin: 5px;
+			}
+
+		}
+
+		@media only screen and (min-width: 768px) {
+			.container{
+				display: flex;
+				flex-flow: row wrap;
+				align-items: stretch;
+			}
+			.nav{
+				flex: 1 1 100%;
+			}	
+			.container>aside{
+				flex: 3 3 0;
+				border-right: 3px solid #2bf;
+				padding-right: 15px;
+			}
+			#content{
+				flex: 9 9 0;
+				padding-left: 15px;
+			}
+
+		}
+
+		@media only screen and (min-width: 768px) {
+			#previewForm{
+				display: flex;
+				flex-flow: row wrap;
+				align-items: stretch;
+			}
+			#previewForm>.previewImageDiv{
+				flex: 4 4 0;
+			}
+			#previewForm>.previewImageDiv+div{
+				flex: 8 8 0;
+			}
+
+		}		
+	</style>
+</head>
+<body>
+	<div class="container">
+		<!-- header -->
+		<header class="nav">
+			<h1>A CRUD application using JavaScript</h1>
+		</header>
+		<span class="status" id="status"></span>
+		<!-- form for adding an item -->
+		<aside class="add">
+			<span class="status" id="addStatus">
+				status
+			</span>				
+			<h2>Add item</h2>
+			<img src="#" alt="No image" class="preview" id="addPreview">
+			<form id="addForm">
+				<div class="form-group">
+					<label for="addImage">Upload Image</label>
+					<input type="file" name="addFile" id="addFile" accept="image/*">
+				</div>
+				<div class="form-group" required>
+					<label for="addName">Item Name</label>
+					<input type="text" name="addName" id="addName"	required>
+				</div>
+				<div class="form-group">
+					<label for="addDescription">Description</label>
+					<textarea id="addDescription">
+						 
+					</textarea>
+				</div>
+				<div class="form-group" required>
+					<label for="addQuantity">Quantity</label>
+					<input type="number" name="addQuantity" id="addQuantity" required>
+				</div>
+				<div class="form-group">
+					<label for="addOwner">Posted by</label>
+					<input type="text" name="addOwner" id="addOwner">
+				</div>
+				<button id="add" type="button" class="btn-success">Add</button>
+				<button id="" type="reset" class="btn-danger">Reset</button>
+			</form>		
+		</aside>
+		<!-- main content area -->
+		<div id="content">
+				<span class="status" id="previewStatus">
+					status
+				</span>				
+			<article id="a1">
+				<form id="previewForm">
+					<div class="previewImageDiv">
+						<img src="#" alt="No image" class="preview" id="previewPreview">
+						<label for="previewImage">Upload Image</label>
+						<input type="file" name="previewFile" id="previewFile" accept="image/*">
+						<input type="button" name="" id="dropImage" class="btn-danger" value="drop image">
+					</div>
+					<div>
+						<div class="form-group" required>
+							<label for="previewName">Item Name</label>
+							<input type="text" name="previewName" id="previewName"	>
+						</div>
+						<div class="form-group">
+							<label for="previewDescription">Description</label>
+							<textarea id="previewDescription">
+								 
+							</textarea>
+						</div>
+						<div class="form-group" required>
+							<label for="previewQuantity">Quantity</label>
+							<input type="number" name="previewQuantity" id="previewQuantity">
+						</div>
+						<div class="form-group">
+							<label for=previewOwner">Posted by</label>
+							<input type="text" name="previewOwner" id="previewOwner" disabled>
+						</div>
+						<button id="update" type="button" class="btn-success">Update</button>
+						<button id="del" type="button" class="btn-danger">Delete</button>
+					</div>
+				</form>	
+										
+			</article>
+			<article id="a2">
+				<form id="searchForm">
+					<input type="text" name="" id="search" placeholder="item name here ...">
+					<button type="button" id="getAll">get all items</span>
+				</form>
+			</article>
+			<article id="a3">
+				<div class="overlay" id="overlay">
+					Search an item to display
+				</div>				
+					<table id="searchTable">
+						<thead>
+							<tr>
+								<th>Id</th>
+								<th>Name</th>
+								<th>Description</th>
+								<th>quantity</th>
+								<th>Posted by</th>
+								<th>Last Modified</th>
+								<th>delete</th>
+							</tr>
+						</thead>
+						<tbody>
+							
+						</tbody>
+					</table>
+
+			</article>
+		</div><!-- end of main content area -->
+
+	</div>
+	<script type="text/javascript">
+		const DB_NAME="inventory";
+		const STORE_NAME="items";
+		const VERSION=1;
+		let db;
+		let store;
+		let request=window.indexedDB.open(DB_NAME, VERSION);
+
+		let previewName=document.getElementById("previewName");
+		let previewOwner=document.getElementById("previewOwner");
+		let previewDescription= document.getElementById("previewDescription");
+		let previewQuantity= document.getElementById("previewQuantity");
+		let previewFile= document.getElementById("previewFile");
+		let previewPreview=document.getElementById("previewPreview");
+
+		let addName=document.getElementById("addName");
+		let addDescription=document.getElementById("addDescription");
+		let addQuantity= document.getElementById("addQuantity");
+		let addOwner= document.getElementById("addOwner");
+		let addFile=document.getElementById("addFile");
+		let addPreview=document.getElementById("addPreview")
+
+		//buttons
+		let add=document.getElementById("add");
+		//let reset=document.getElementById("reset");
+		let update= document.getElementById("update");
+		let del=document.getElementById("del");
+		let dropImage=document.getElementById("dropImage");
+		let getAll=document.getElementById("getAll");
+		//
+		let addForm=document.getElementById("addForm");
+		let previewForm= document.getElementById("previewForm");
+		let searchForm=document.getElementById("searchForm");
+
+		let overlay=document.getElementById("overlay");
+
+		let search= document.getElementById("search");
+
+		let currentItem={id: null, name: null, description: null, quantity:null, owner: null, image: null};
+
+
+		currentItem.update=function(object){
+			this.name=object.hasOwnProperty("name")?object.name: this.name;
+			this.description=object.hasOwnProperty("description")?object.description: this.description;
+			this.quantity=object.hasOwnProperty("quantity")?object.quantity: this.quantity;
+			this.image=object.hasOwnProperty("image")?object.image: this.image;
+		}
+
+		request.onupgradeneeded= function(e){
+			db=e.target.result;
+			if(!db.objectStoreNames.contains(STORE_NAME)){
+				store= db.createObjectStore(STORE_NAME, {keyPath: "id", autoIncrement: true});
+				store.createIndex("name", "name", {unique: false});
+			}
+		}
+
+		currentItem.reset= function(){
+			for (var p in this){
+				if(typeof this[p]=="function")continue;
+				this[p]=null;
+			}
+		}
+
+		currentItem.hasChanged= function(){
+			let hasChanged= false;//
+				if(previewName.value.toLowerCase()!=this.name.toLowerCase())hasChanged=true;
+				if(previewQuantity.value.toLowerCase()!=this.quantity.toLowerCase())hasChanged=true;
+				if(previewDescription.value.toLowerCase()!=this.description.toLowerCase())hasChanged=true;
+				if(currentItem.image != currentItem.mainImage)hasChanged=true;//there is a change in image
+
+			return hasChanged;
+		}
+
+		request.onerror= function(e){
+			showError("status", "Error: database access failed");
+			handleError(e.target.errorCode);
+		}
+
+		request.onsuccess= function(e){
+			db=e.target.result;
+		}
+
+		function getObjectStore(storeName, mode){
+			mode=(mode=="readwrite" || mode=="readonly")?mode: "readonly";/*just mode */
+			return db.transaction(storeName, mode).objectStore(storeName);
+		}
+
+		function addItem(object, callback){
+			callback= typeof callback=="function"? callback: (e)=>{}			
+			store=getObjectStore(STORE_NAME, "readwrite")
+			if(object.hasOwnProperty("id"))object.id=Number(object.id);
+			object.lastModified=(new Date()).getTime()
+			console.log(object);
+			let add=store.add(object);
+			add.onsuccess= function(e){
+				showSuccess("addStatus", "Item added");
+				callback(e.target.errorCode);
+			}
+			add.onerror=function(e){
+				showError("addStatus", "Item failed to add");
+				handleError(e.target.errorCode);
+			}
+		}
+
+		function getItem(key, callback, onerror){
+			onerror= typeof onerror=="function"? onerror: (e)=>{}
+			callback= typeof callback=="function"? callback: (e)=>{}			
+			let store=getObjectStore(STORE_NAME, "readonly");
+			let item=store.get(key);
+			  item.onsuccess=function(e){
+			  	callback(e.target.result);
+			  }
+			  item.onerror=function(e){
+				onerror(e.target.errorCode);
+				handleError(e.target.errorCode);			  	
+			  }
+		}
+
+		function getAllItems(callback, onerror){
+			onerror= typeof onerror=="function"? onerror: (e)=>{}
+			callback= typeof callback=="function"? callback: (e)=>{}
+
+			let store= getObjectStore(STORE_NAME, "readonly");
+			let items= store.getAll();
+				items.onsuccess= function(e){
+					callback(e.target.result);
+				}
+				items.onerror= function(e){
+					onerror(e.target.errorCode);
+					handleError(e.target.errorCode);					
+				}
+		}
+
+		function searchItemsByName(name, callback, onerror){
+			let store= getObjectStore(STORE_NAME, "readonly");
+			let index=store.index("name");
+			let cursor=index.openCursor();
+			let match=[];
+			  cursor.onsuccess=function(e){
+			  	let result=e.target.result;
+			  	if(result){
+			  		if(result.value.name.match(new RegExp(name, "ig"))){
+			  			match.push(result.value);
+			  		}
+			  		result.continue();
+			  	}
+			  	else{
+			  		callback(match);
+			  	}
+			  }
+
+			  cursor.onerror= function(e){
+			  	onerror(e.target.errorCode);
+			  	handleError(e.target.errorCode);
+			  }
+		}
+
+		function updateItem(object){
+			let store=getObjectStore(STORE_NAME, "readwrite");
+			if(object.hasOwnProperty("id"))object.id=Number(object.id);	
+			object.lastModified=(new Date()).getTime();	
+			let update=store.put(object);
+			update.onerror= function(e){
+				showError("previewStatus", "Item update failed");
+				handleError(e.target.errorCode);
+			}
+			update.onsuccess= function(e){
+				showSuccess("previewStatus", "Update successful");				
+			}
+
+		}
+
+		function blobToUrl(file, callback){
+			if(!(file instanceof Blob)) return;
+			callback= typeof callback=="function"? callback: (e)=>{}
+			let reader=new FileReader();
+			reader.readAsDataURL(file);
+			reader.onload= function(e){
+				callback(reader.result);
+			}
+		}
+
+		function deleteItem(key, callback, onerror){
+			callback= typeof callback=="function"? callback: (e)=>{}			
+			onerror= typeof onerror=="function"? onerror: (e)=>{}			
+			key=Number(key);
+			let store=getObjectStore(STORE_NAME, "readwrite");
+			let del= store.delete(key);
+			del.onsuccess= function(){
+				callback("item successfully deleted");
+			}
+			del.onerror= function(e){
+				onerror("Delete failed");
+				handleError(e.target.errorCode);
+			}
+		}
+
+		function showSuccess(id, msg){
+			let status= document.getElementById(id);
+			if(!status)return;
+			status.classList.remove("error");
+			status.classList.add("success");
+			status.innerHTML=msg;
+			status.style.display="block";
+			setTimeout(()=>{status.style.display="none"}, 4000)
+		}
+
+		function showError(id, msg){
+			let status= document.getElementById(id);
+			if(!status)return;
+			status.classList.remove("success");
+			status.classList.add("error");
+			status.innerHTML=msg;	
+			status.style.display="block"		;
+			setTimeout(()=>{status.style.display="none"}, 4000)
+		}
+
+		function handleError(e){
+			console.error(e);
+		}
+
+		function clearSearchResults(){
+			//clears all searches
+			document.getElementById('searchTable').getElementsByTagName('tbody')[0].innerHTML="";
+		}
+
+		function  writeSearchRow(object){
+			let row=document.createElement("tr");
+				let str="<td>"+object.id+"</td><td></td>";
+					str+="<td>"+object.description+"</td>";
+					str+="<td>"+object.quantity+"</td>";
+					str+="<td>"+object.owner+"</td>";
+					str+="<td>"+object.lastModified+"</td>";
+					str+="<td></td>";
+				let a=document.createElement("a");
+					a.href="#";
+					a.className="deleteLink";
+					a.dataset.id=object.id;
+					a.addEventListener("click", function(e){
+						previewItem(e.target.dataset.id)
+						e.preventDefault();
+					})
+					a.innerHTML=object.name;
+
+				let d=document.createElement("a");
+					d.href="#";
+					d.className="deleteLink";
+					d.dataset.id=object.id;
+					d.addEventListener("click", function(e){
+						deleteItem(e.target.dataset.id,
+							 function(msg){
+							 	showSuccess("status", msg);
+							 	d.parentElement.parentElement.remove();
+							},
+							function(e){
+								showError(e.message);
+							}
+						)
+						e.preventDefault();
+					})
+					d.innerHTML="delete";	
+				row.innerHTML=str;
+				row.lastElementChild.appendChild(d);
+				row.children[1].appendChild(a);
+
+				document.getElementById('searchTable').getElementsByTagName('tbody')[0].appendChild(row);
+
+		}
+
+		function previewItem(id, onerror){
+			onerror= typeof onerror=="function"? onerror: (e)=>{}			
+			id=Number(id);
+			let store=getObjectStore(STORE_NAME, "readonly");
+			let item=store.get(id);
+			item.onsuccess=function(e){
+				writePreview(e.target.result);
+			}
+			item.onerror=function(e){
+				onerror(e.target.errorCode);
+			}
+		}
+
+		//event handlers
+		addForm.addEventListener("reset", function(e){
+			previewPreview.src="";
+		})
+
+		addFile.addEventListener("change", function(e){
+			if(this.files.length<1){
+				addPreview.src="";
+				return;
+			}
+			blobToUrl(this.files[0], (url)=>{addPreview.src=url})
+		})
+
+		dropImage.addEventListener("click", (e)=>{
+			previewPreview.src="";
+			currentItem.update({image: null});
+			previewFile.value="";
+		})
+
+		previewFile.addEventListener("change", function(e){
+			if(this.files.length<1)return
+				let blob=this.files[0];
+				blobToUrl(this.files[0], (url)=>{
+					previewPreview.src=url;
+					currentItem.update({image: blob});
+				 })						
+		})
+
+		add.addEventListener("click",  (e)=>{
+			if(!addName.value || !addQuantity.value){
+				showError("addStatus", "fields marked with * are required");
+				return;
+			}
+			addItem({name: addName.value, image:addFile.files[0]||null, description: addDescription.value, quantity:addQuantity.value, owner:addOwner.value}, (e)=>{
+				addForm.reset();
+				addPreview.src="";
+			});
+		})
+
+		getAll.addEventListener("click", function(e){
+			searchForm.reset();
+			hideOverlay();
+			clearSearchResults();
+			getAllItems(
+				function(items){
+					if(items.length==0){
+						showOverlay("No object in store");
+						return;
+					}
+					items.forEach(function(item){
+						writeSearchRow(item);
+					})
+				},
+				function(e){
+
+				}
+			)
+		})
+
+		searchForm.addEventListener("submit", function(e){
+			e.preventDefault();
+			if(!search.value)return;
+			clearSearchResults();
+			searchItemsByName(search.value, function(items){
+					if(items.length<1){
+						showOverlay("No match found for "+search.value);
+						return;
+					}
+					hideOverlay();
+					items.forEach(function(item){
+						writeSearchRow(item);
+					})
+				},
+
+				function(e){
+					console.log(e)
+				}
+			)
+		})
+
+		function hideOverlay(){
+			overlay.style.display="none";
+		}
+
+		function showOverlay(msg){
+			overlay.style.display="block";
+			overlay.innerHTML=msg?msg:"Search an item to display ";
+		}
+
+		function writePreview(object){
+			currentItem.update(object);
+			currentItem.id=object.id;
+			currentItem.owner=object.owner;
+			currentItem.mainImage=object.image;//a reference to the actual image object to track changes made to image
+			console.log(object, currentItem);
+			if(currentItem.image)
+				blobToUrl(currentItem.image, function(url){
+					previewPreview.src=url;
+				})
+			else previewPreview.src="";
+			previewForm.reset();
+			previewQuantity.value=currentItem.quantity;
+			previewName.value=currentItem.name;
+			previewDescription.value=currentItem.description;
+			previewOwner.value=currentItem.owner;
+		}
+
+		del.addEventListener("click", function(e){
+			if(currentItem.id)
+				deleteItem(currentItem.id, 
+					function(msg){
+						previewForm.reset();
+						previewPreview.src="";
+						showSuccess("previewStatus", "Item successfully deleted");
+						//remove item from search result
+						if(searchTable.querySelector("[data-id='"+currentItem.id+"']"))searchTable.querySelector("[data-id='"+currentItem.id+"']").parentElement.parentElement.remove();
+						currentItem.reset();
+
+					},
+					function(e){
+						showError(e);
+					}
+				)
+		});
+
+		update.addEventListener("click", function(e){
+			if(!currentItem.hasChanged()){
+				showError("previewStatus", "no change was made");
+				return;
+			}
+			//ensure required fields are not empty;
+			let required=previewForm.querySelectorAll("div[required] input");
+			for(let i=0; i<required.length; i++){
+				if(!required[i].value){
+					showError("previewStatus", "fields marked with * are required");
+					return;
+				}
+			}
+
+			currentItem.update({name:previewName.value, quantity: previewQuantity.value, description: previewDescription.value});
+
+			//make change to database;
+			updateItem({name:currentItem.name, id: currentItem.id, description: currentItem.description, quantity:currentItem.quantity, image: currentItem.image, owner: currentItem.owner});
+		})
+	</script>
+</body>
+</html>
